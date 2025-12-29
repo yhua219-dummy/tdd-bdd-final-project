@@ -344,3 +344,4 @@ class TestProductModel(unittest.TestCase):
 
             # Verify it mentions "missing"
             self.assertIn("Invalid product: missing ", str(context.exception))
+
