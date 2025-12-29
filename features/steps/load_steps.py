@@ -63,6 +63,3 @@ def step_impl(context):
 
         # Ensure post request was "201 Created"
         assert context.response.status_code == HTTP_201_CREATED
-
-
-
