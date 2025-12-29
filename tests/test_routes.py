@@ -28,6 +28,7 @@ import os
 import logging
 from decimal import Decimal
 from unittest import TestCase
+from unittest.mock import patch
 from urllib.parse import quote_plus
 
 from service import app
@@ -215,6 +216,19 @@ class TestProductRoutes(TestCase):
         self.assertEqual(updated_product_data, new_product_data)
         self.assertNotEqual(updated_product_data, test_product_data)
 
+    def test_update_product_with_invalid_id(self):
+        """It should return 404 if product_id is not in DB"""
+        products = self._create_products(3)
+        invalid_id = max(p.id for p in products) + 999
+
+        # Verify ID doesn't exist
+        self.assertIsNone(Product.find(invalid_id))
+
+        put_response = self.client.put(f"{BASE_URL}/{invalid_id}", json=products[0].serialize())
+
+        self.assertEqual(put_response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertIn(b"No product with id", put_response.data)
+
     def test_delete_a_product(self):
         """It should delete products in DB given their ids"""
 
@@ -236,6 +250,20 @@ class TestProductRoutes(TestCase):
         # check post-deletion product count in DB
         self.assertEqual(self.get_product_count(), initial_product_count - 1)
 
+    def test_delete_a_product_with_invalid_id(self):
+        """It should return 404 if product_id is not in DB"""
+
+        products = self._create_products(3)
+        invalid_id = max(p.id for p in products) + 999
+
+        # Verify ID doesn't exist
+        self.assertIsNone(Product.find(invalid_id))
+
+        put_response = self.client.delete(f"{BASE_URL}/{invalid_id}")
+
+        self.assertEqual(put_response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertIn(b"No product with id", put_response.data)
+
     def test_list_all_products(self):
         """It should return all products in DB"""
 
@@ -244,6 +272,25 @@ class TestProductRoutes(TestCase):
         self.assertEqual(get_response.status_code, status.HTTP_200_OK)
         response_data = get_response.get_json()
         self.assertEqual(len(response_data), len(product_list))
+
+    def test_list_all_products_with_empty_db(self):
+        """It should return 404 when DB is empty"""
+
+        response = self.client.get(BASE_URL)
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertIn(b"No product in database", response.data)
+
+    @patch('service.models.Product.all')
+    def test_list_all_products_null(self, mock_all):
+        """It should return 404 when DB is empty"""
+        mock_all.return_value = []
+
+        response = self.client.get(BASE_URL)
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertIn(b"No product in database", response.data)
+        mock_all.assert_called_once()
 
     def test_list_by_name(self):
         """It should return all products in DB with the given name"""
