@@ -20,7 +20,7 @@ Product Store Service with UI
 """
 from flask import jsonify, request, abort
 from flask import url_for  # noqa: F401 pylint: disable=unused-import
-from service.models import Product
+from service.models import Product, Category
 from service.common import status  # HTTP Status Codes
 from . import app
 
@@ -89,40 +89,126 @@ def create_products():
     #
     # Uncomment this line of code once you implement READ A PRODUCT
     #
-    # location_url = url_for("get_products", product_id=product.id, _external=True)
-    location_url = "/"  # delete once READ is implemented
+    location_url = url_for("get_products", product_id=product.id, _external=True)
+    # location_url = "/"  # delete once READ is implemented
     return jsonify(message), status.HTTP_201_CREATED, {"Location": location_url}
 
 
 ######################################################################
 # L I S T   A L L   P R O D U C T S
 ######################################################################
-
 #
 # PLACE YOUR CODE TO LIST ALL PRODUCTS HERE
 #
+@app.route("/products", methods=["GET"])
+def get_all_products():
+    """
+    Get all Products in DB, optionally filter by product name or category
+    This endpoint will find all Products in DB (optionally filter by a given product name or category)
+    and return them as JSON data
+    """
+
+    app.logger.info("Request to Get all Products...")
+
+    product_name = request.args.get("name")
+    product_category = request.args.get("category")
+    product_available = request.args.get("available")
+
+    if product_name:
+        app.logger.info(f"Finding products by name: {product_name}")
+        all_products = Product.find_by_name(product_name)
+    elif product_category:
+        category_value = getattr(Category, product_category.upper())
+        app.logger.info(f"Finding products by category: {product_category} (value = {category_value})")
+        all_products = Product.find_by_category(category_value)
+    elif product_available:
+        availability_value = product_available.lower() in ["true", "yes", "1"]
+        app.logger.info(f"Finding products by availability: {availability_value}")
+        all_products = Product.find_by_availability(availability_value)
+    else:
+        app.logger.info("Finding all products in DB")
+        all_products = Product.all()
+
+    if not all_products:
+        abort(status.HTTP_404_NOT_FOUND, "No product in database.")
+
+    all_product_data = [product.serialize() for product in all_products]
+
+    app.logger.info(f"Found {len(all_product_data)} products. Returning all product data.")
+    return all_product_data, status.HTTP_200_OK
+
 
 ######################################################################
 # R E A D   A   P R O D U C T
 ######################################################################
-
 #
 # PLACE YOUR CODE HERE TO READ A PRODUCT
 #
+@app.route("/products/<int:product_id>", methods=["GET"])
+def get_products(product_id):
+    """
+    Get a Product
+    This endpoint will find a Product in DB by its id and return its json data
+    """
+
+    app.logger.info("Request to Get a Product...")
+    product = Product.find(product_id)
+
+    if not product:
+        abort(status.HTTP_404_NOT_FOUND, f"No product with id '{product_id}' in database.")
+
+    app.logger.info(f"Found product {product.name} with id {product_id}, returning product data.")
+    return product.serialize(), status.HTTP_200_OK
+
 
 ######################################################################
 # U P D A T E   A   P R O D U C T
 ######################################################################
-
 #
 # PLACE YOUR CODE TO UPDATE A PRODUCT HERE
 #
+@app.route("/products/<int:product_id>", methods=["PUT"])
+def update_product(product_id):
+    """
+    Updates a Product
+    This endpoint will find a Product in DB by its id, update its data based on the body, and return its updated json data
+    """
+
+    app.logger.info(f"Request to Update a product with id {product_id}")
+    check_content_type("application/json")
+
+    product = Product.find(product_id)
+    if not product:
+        abort(status.HTTP_404_NOT_FOUND, f"No product with id '{product_id}' in database.")
+
+    data = request.get_json()
+    data['id'] = product_id
+
+    product.deserialize(data)
+    product.update()
+
+    return product.serialize(), status.HTTP_200_OK
+
 
 ######################################################################
 # D E L E T E   A   P R O D U C T
 ######################################################################
-
-
 #
 # PLACE YOUR CODE TO DELETE A PRODUCT HERE
 #
+@app.route("/products/<int:product_id>", methods=["DELETE"])
+def delete_product(product_id):
+    """
+    Delete a Product
+    This endpoint will find a Product in DB by its id and remove its from DB
+    """
+
+    app.logger.info(f"Request to Delete a product with id {product_id}")
+
+    product = Product.find(product_id)
+    if not product:
+        abort(status.HTTP_404_NOT_FOUND, f"No product with id '{product_id}' in database.")
+
+    product.delete()
+
+    return "", status.HTTP_204_NO_CONTENT
