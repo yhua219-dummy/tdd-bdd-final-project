@@ -106,6 +106,13 @@ def step_impl(context, element_name):
 
 ## UPDATE CODE HERE ##
 
+@when('I press the "{button}" button')
+def step_impl(context, button):
+    # Generate the button_id by converting the button name to lowercase and appending '-btn'
+    # Use context.driver.find_element_by_id(button_id) line to find the button element on the web page based on the generated button_id and call the click() method
+    button_id = f"{button.lower()}-btn"
+    context.driver.find_element_by_id(button_id).click()
+
 ##################################################################
 # This code works because of the following naming convention:
 # The id field for text input in the html is the element name
@@ -132,3 +139,51 @@ def step_impl(context, element_name, text_string):
     )
     element.clear()
     element.send_keys(text_string)
+
+##################################################################
+# Other added steps by me
+##################################################################
+
+@then('I should see "{name}" in the results')
+def step_impl(context, name):
+    # Use the WebDriverWait to wait for the specified name to be present in the element with the ID 'search_results
+    # Check if the provided name is present in the text content of the element using the expected_conditions.text_to_be_present_in_element method
+    # Use the assert(found) statement to verify the name was found in the results.
+
+    found = WebDriverWait(context.driver, context.wait_seconds).until(
+        expected_conditions.text_to_be_present_in_element(
+            (By.ID, 'search_results'),
+            name
+        )
+    )
+    assert(found)
+
+@then('I should not see "{name}" in the results')
+def step_impl(context, name):
+    # Use context.driver.find_element_by_id('search_results') to locate the element with the ID 'search_results',
+    # Use the assert(name not in element.text) statement to check if the provided name is not present in the text content of the element.
+    # assert that the name is not found in the results
+
+    element = context.driver.find_element_by_id('search_results')
+    assert(name not in element.text)
+
+
+@then('I should see the message "{message}"')
+def step_impl(context, message):
+    # Use WebDriverWait to wait for the specified message to be present in the element with the ID 'flash_message'
+    # Use the expected_conditions.text_to_be_present_in_element method to check if the provided message is present in the text content of the element.
+    # Use the assert(found) statement to verify that the message was found in the flash message area.
+
+    found = WebDriverWait(context.driver, context.wait_seconds).until(
+        expected_conditions.text_to_be_present_in_element(
+            (By.ID, 'flash_message'),
+            message
+        )
+    )
+    assert(found)
+
+@then('I should not see "{text_string}" in the "{element_name}" field')
+def step_impl(context, text_string, element_name):
+    element_id = ID_PREFIX + element_name.lower().replace(' ', '_')
+    element = context.driver.find_element_by_id(element_id)
+    assert(text_string not in element.text)
